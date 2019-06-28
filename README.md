@@ -28,6 +28,9 @@ Including an example of how to use your role (for instance, with variables passe
 
     - hosts: servers
       vars_prompt:
+        - name: domain_name
+          prompt: Enter the domain name this installation of Bacn will be running on
+          private: no
         - name: superuser
           prompt: Enter a username for Bacn superuser
           private: no
