@@ -13,7 +13,7 @@ galaxy_info:
       - 7
 
   galaxy_tags:
-    - social network
+    - social
     - decentralized
     - django
     - activitypub
