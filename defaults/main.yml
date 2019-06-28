@@ -1,0 +1,5 @@
+required_vars:
+  - domain_name
+  - superuser
+  - superuser_email
+  - superuser_password

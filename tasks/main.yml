@@ -1,0 +1,136 @@
+- name: "Check required variables"
+  fail: msg="Variable '{{ item }}' is not defined"
+  when: item not in vars
+  with_items: "{{required_vars}}"
+
+- name: Install EPEL
+  yum:
+    name:
+      - epel-release
+    state: present
+
+- name: Install dependancies
+  yum:
+    name:
+      - git
+      - nginx
+      - docker
+      - docker-compose
+      - python-pip
+    state: present
+
+- name: Clone the git repository
+  git:
+    repo: https://gitlab.com/mvanorder1390/bacn.git
+    dest: /opt/bacn
+  ignore_errors: yes
+
+- name: stat bacn.service
+  stat: path=/etc/systemd/system/bacn.service
+  register: service_stat
+
+- name: Install the bacn service
+  command: mv /opt/bacn/web_service/bacn.service /etc/systemd/system/bacn.service
+  when: not service_stat.stat.exists
+
+- name: Force systemd to reread configs
+  systemd:
+    daemon_reload: yes
+
+- name: Add nginx config file
+  file:
+    src: /opt/bacn/web_service/bacn.conf
+    dest: /etc/nginx/conf.d/bacn.conf
+    state: link
+
+- name: Set domain name in NGINX config
+  replace:
+    path: /etc/nginx/conf.d/bacn.conf
+    regexp: '^( *server_name ).+'
+    replace: '\g<1> {{ domain_name }} www.{{ domain_name }};'
+
+- name: Set domain name in settings.py
+  replace:
+    path: /opt/bacn/bacn/settings.py
+    regexp: '^ALLOWED_HOSTS *= *.+'
+    replace: "ALLOWED_HOSTS = ['{{ domain_name }}', '127.0.0.1']"
+
+- name: Enable reverse proxy in SELinux
+  seboolean:
+    name: httpd_can_network_connect
+    persistent: true
+    state: yes
+
+- name: Install pipenv
+  pip:
+    name: pipenv
+    state: present
+
+- name: Setup pipenv
+  shell: pipenv install
+  args:
+    chdir: /opt/bacn
+
+- name: Collect static files
+  shell: echo yes | pipenv run python manage.py collectstatic
+  args:
+    chdir: /opt/bacn
+
+- name: Stat db.sql in it's final location
+  stat: path=/opt/bacn/db.sqlite3
+  register: db_final_stat
+
+- name: Apply database migrations
+  shell: pipenv run python manage.py migrate
+  args:
+    chdir: /opt/bacn
+  when: not db_final_stat.stat.exists
+
+- name: Create superuser
+  shell: echo "from django.contrib.auth.models import User; User.objects.create_superuser('admin', 'admin@example.com', 'pass')" | pipenv run python manage.py shell
+  args:
+    chdir: /opt/bacn
+  when: not db_final_stat.stat.exists
+  ignore_errors: yes
+
+- name: Stat db.sql
+  stat: path=/opt/bacn/db/db.sqlite3
+  register: db_stat
+
+- name: Move database for Docker to use
+  command: mv /opt/bacn/db/db.sqlite3 /opt/bacn/db.sqlite3
+  when: db_stat.stat.exists
+
+- name: Start Docker service
+  service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Start Bacn service
+  service:
+    name: bacn
+    state: started
+    enabled: true
+
+- name: Start NGINX service
+  service:
+    name: nginx
+    state: started
+    enabled: true
+
+- name: Open HTTP port
+  firewalld:
+    service: http
+    immediate: yes
+    permanent: yes
+    state: enabled
+    zone: public
+
+- name: Open HTTPS port
+  firewalld:
+    service: https
+    immediate: yes
+    permanent: yes
+    state: enabled
+    zone: public

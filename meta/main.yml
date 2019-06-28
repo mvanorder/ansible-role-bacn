@@ -1,0 +1,22 @@
+galaxy_info:
+  author: Malcolm VanOrder
+  description: Developer
+  company:
+
+  license: BSD-3-Clause
+
+  min_ansible_version: 2.4
+
+  platforms:
+  - name: EL
+    versions:
+      - 7
+
+  galaxy_tags:
+    - social network
+    - decentralized
+    - django
+    - activitypub
+
+dependencies: []
+  
