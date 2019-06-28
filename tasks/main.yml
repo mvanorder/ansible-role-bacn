@@ -88,6 +88,7 @@
     echo yes | pipenv run python manage.py collectstatic
   args:
     chdir: /opt/bacn
+    creates: /opt/bacn/staticfiles
 
 - name: Stat db.sql in it's final location
   stat: path=/opt/bacn/db.sqlite3
