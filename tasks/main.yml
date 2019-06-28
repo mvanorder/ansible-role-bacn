@@ -72,7 +72,9 @@
     chdir: /opt/bacn
 
 - name: Collect static files
-  shell: echo yes | pipenv run python manage.py collectstatic
+  shell: |
+    set -euf -o pipefail
+    echo yes | pipenv run python manage.py collectstatic
   args:
     chdir: /opt/bacn
 
@@ -87,7 +89,9 @@
   when: not db_final_stat.stat.exists
 
 - name: Create superuser
-  shell: echo "from django.contrib.auth.models import User; User.objects.create_superuser('admin', 'admin@example.com', 'pass')" | pipenv run python manage.py shell
+  shell: |
+    set -euf -o pipefail
+    echo "from django.contrib.auth.models import User; User.objects.create_superuser('admin', 'admin@example.com', 'pass')" | pipenv run python manage.py shell
   args:
     chdir: /opt/bacn
   when: not db_final_stat.stat.exists
