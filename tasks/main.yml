@@ -66,10 +66,21 @@
     name: pipenv
     state: present
 
-- name: Setup pipenv
-  shell: pipenv install
+- name: Check if a virtualenv is already created
+  ignore_errors: true
+  command: "pipenv --venv"
   args:
     chdir: /opt/bacn
+  register: pipenv_venv_check_cmd
+  changed_when:
+    - ('No virtualenv' not in pipenv_venv_check_cmd.stderr)
+
+- name: Setup pipenv
+  command: pipenv --bare install
+  args:
+    chdir: /opt/bacn
+  when:
+    - ('No virtualenv' in pipenv_venv_check_cmd.stderr)
 
 - name: Collect static files
   shell: |
@@ -83,7 +94,7 @@
   register: db_final_stat
 
 - name: Apply database migrations
-  shell: pipenv run python manage.py migrate
+  command: pipenv run python manage.py migrate
   args:
     chdir: /opt/bacn
   when: not db_final_stat.stat.exists
